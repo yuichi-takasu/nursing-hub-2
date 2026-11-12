@@ -8,6 +8,8 @@
 /* v2: タブレット・個人スマートフォン向け */
 button.identity{border:0;cursor:pointer;font:inherit}button,select,input:not([type=radio]):not([type=checkbox]){min-height:44px}.wide{width:100%;margin-top:12px}.footnote{font-size:12px;margin-top:15px}.answer{padding:10px;border-radius:8px;border:1px solid var(--line);min-height:46px;font-weight:400}.answer:has(input:checked){background:var(--soft);border-color:var(--blue)}input[type=radio],input[type=checkbox]{width:20px;height:20px;flex:none;accent-color:var(--blue)}iframe.video{border:0;max-height:none}small{overflow-wrap:anywhere}.pill{white-space:normal}h1,h2,h3,p{overflow-wrap:anywhere}.brand strong{white-space:nowrap}hr{border:0;border-top:1px solid var(--line);margin:20px 0}dialog .muted{font-size:13px;margin-bottom:12px}dialog form{margin-top:15px}#main:focus{outline:none}@media(max-width:720px){nav .navitem{font-size:13px;min-height:44px}.identity{max-width:65%;font-size:12px!important}.pagehead{flex-wrap:wrap}.pagehead h1{font-size:24px}.metrics{gap:10px}.metric strong{font-size:26px}.hero h2{font-size:25px;line-height:1.5}.bar select{flex:1}dialog{max-height:94dvh}.workspace>header{position:sticky;top:0;z-index:2}.cards .cardbody{padding:18px}.cardfooter{padding:12px 18px}.columns{gap:0}main{padding-bottom:60px}}
 
+.quiz-review{margin:16px 0 22px}.review-item{padding:14px 0;border-bottom:1px solid var(--line)}.review-item h4{margin:0 0 10px;line-height:1.7}.review-item p{margin-top:8px}.review-item .pill{margin-bottom:4px}
+
 </style></head>
 <body><a class="skip" href="#main">本文へ</a><div class="shell">
 <aside><div class="brand"><span class="brandmark" aria-hidden="true">＋</span><div><strong>浦安中央病院</strong><small id="brand-sub">看護教育・研修ハブ</small></div></div><nav id="nav" aria-label="メインメニュー"></nav><div class="sidefoot">院内研修ポータル<small>URAYASU CENTRAL HOSPITAL</small></div></aside>
@@ -57,7 +59,15 @@ window.HUB_CONFIG = {
     return p.quiz.missed.length?'再確認':'完了';
   }
   function key(m) {return m.id+'@'+m.version;}
-  const api={categories,esc,video,grade,status,key};
+  function quizReview(questions,quiz) {
+    if(!quiz) return '';
+    return '<section class="quiz-review" aria-label="設問別の結果と解説"><h3>設問別の結果と解説</h3>'+questions.map((q,i)=>{
+      const chosen=quiz.answers?.[i],hasAnswer=Number.isInteger(chosen)&&chosen>=0&&chosen<q.options.length;
+      const verdict=hasAnswer?'<span class="pill '+(chosen===q.correct?'good':'warn')+'">'+(chosen===q.correct?'正解':'不正解')+'</span>':'';
+      return '<div class="review-item"><h4>問'+(i+1)+' '+esc(q.q)+'</h4>'+verdict+(hasAnswer?'<p>あなたの回答：'+esc(q.options[chosen])+'</p>':'')+'<p><strong>正答：'+esc(q.options[q.correct])+'</strong></p><p class="pre"><strong>解説</strong><br>'+esc(q.explanation||'解説は未登録です。')+'</p></div>';
+    }).join('')+'</section>';
+  }
+  const api={categories,esc,video,grade,status,key,quizReview};
   root.HubCore=api;
   if(typeof module!=='undefined')module.exports=api;
 })(typeof window==='undefined'?globalThis:window);
@@ -130,8 +140,8 @@ function detail(){
   $('#main').innerHTML=(demo?'<div class="notice">デモ表示・台帳には送信しません。</div>':'')+syncNotice()+`<div class="pagehead"><div>${button('← 教材一覧','catalog','link')}<h1>${C.esc(m.title||'名称未設定')}</h1><p>${C.esc(m.category||'未分類')} · ${C.esc(m.group||'全職種')} · 版 ${C.esc(m.version)}</p></div>${pill(st)}</div><div class="columns"><div><section class="panel"><h2>動画を視聴</h2>${player}${v?`<p><a class="button secondary" href="${C.esc(v.original)}" target="_blank" rel="noopener noreferrer">別のタブで動画を開く ↗</a></p>`:''}<p class="muted footnote">最後まで確認したら、下のボタンで視聴を記録してください。</p>${p.watched?'<p class="notice">✓ 視聴済みとして記録されています。</p>':`<button class="button wide" data-action="watch" ${v?'':'disabled'}>視聴済みを記録する</button>`}</section><section class="panel"><h2>標準手順・教材資料</h2><p class="pre">${C.esc(m.standard||'標準手順は未登録です。')}</p></section>${m.feedback?`<section class="panel"><h2>全体講評・共通の確認事項</h2><p class="pre">${C.esc(m.feedback)}</p></section>`:''}</div><div><section class="panel"><h2>確認テスト</h2><div id="quiz-area">${!m.questions.length?'<p class="muted">この教材に確認テストはありません。視聴記録で完了になります。</p>':!p.watched?'<p class="muted">動画を視聴し「視聴済みを記録」すると回答できます。</p>':quizHtml(m,p)}</div></section><section class="panel"><h2>教わった手順が違ったら</h2><p>動画・標準手順と現場の指導に違いがあった場合、教育担当者へ確認を依頼できます。</p>${button('手順差を記録・相談','consult','secondary wide')}</section></div></div>`;
   bindQuiz(m);
 }
-function quizHtml(m,p){return `${p.quiz?`<div class="notice"><strong>前回の正答率 ${p.quiz.score}%</strong>${p.quiz.missed.length?'<p>再確認：'+p.quiz.missed.map(C.esc).join('／')+'</p>':'<p>全問正解です。</p>'}</div>`:''}<form id="quiz-form">${m.questions.map((q,i)=>`<fieldset><legend>問${i+1} ${C.esc(q.q)}</legend><div class="question">${q.options.map((s,j)=>`<label class="check answer"><input type="radio" name="q${i}" value="${j}" required>${C.esc(s)}</label>`).join('')}</div></fieldset>`).join('')}<button class="button wide">回答を記録する</button></form>`;}
-function bindQuiz(m){if(!$('#quiz-form'))return;$('#quiz-form').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);const answers=m.questions.map((_,i)=>Number(f.get('q'+i)));const result=C.grade(m.questions,answers);record(m,'テスト',{answers},result);detail();notify(result.missed.length?'回答を記録しました。誤答した項目を再確認してください。':'全問正解です。回答を記録しました。');};}
+function quizHtml(m,p){return `${p.quiz?`<div class="notice"><strong>前回の正答率 ${p.quiz.score}%</strong>${p.quiz.missed.length?'<p>再確認：'+p.quiz.missed.map(C.esc).join('／')+'</p>':'<p>全問正解です。</p>'}</div>`:''}${C.quizReview(m.questions,p.quiz)}<form id="quiz-form">${m.questions.map((q,i)=>`<fieldset><legend>問${i+1} ${C.esc(q.q)}</legend><div class="question">${q.options.map((s,j)=>`<label class="check answer"><input type="radio" name="q${i}" value="${j}" required>${C.esc(s)}</label>`).join('')}</div></fieldset>`).join('')}<button class="button wide">回答を記録する</button></form>`;}
+function bindQuiz(m){if(!$('#quiz-form'))return;$('#quiz-form').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);const answers=m.questions.map((_,i)=>Number(f.get('q'+i)));const result={...C.grade(m.questions,answers),answers};record(m,'テスト',{answers},result);detail();notify(result.missed.length?'回答を記録しました。誤答した項目を再確認してください。':'全問正解です。回答を記録しました。');};}
 function record(m,type,extra={},result){
   if(!user)return;const who={...user};const k=C.key(m);const p=progress[k]||{};
   progress[k]={...p,title:m.title,updated:new Date().toISOString(),...(type==='視聴'?{watched:true}:{}),...(result?{quiz:result}:{})};
